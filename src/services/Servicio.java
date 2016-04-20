@@ -16,6 +16,7 @@ import javax.ws.rs.core.MediaType;
 public class Servicio {
 	
 	Map<Integer, Proceso> procesos = new HashMap<>();
+	Map<Integer, Thread> threads = new HashMap<>();
 	
 	@Path("/arrancar")
 	@GET
@@ -27,19 +28,26 @@ public class Servicio {
 		}
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		
-		if (proceso == null) {
+		if (proceso == null && thread == null) {
 			proceso = new Proceso(id);
 			procesos.put(id, proceso);
+			thread = new Thread(proceso);
+			threads.put(id, thread);
+			
 			proceso.arrancar();
-			proceso.run();
+			thread.start();
 			
 			return "OK";
 		}
 		
-		if (proceso.getEstado() == Proceso.Estado.PARADO) {
+		if (proceso.getEstado() == Proceso.Estado.PARADO && !thread.isAlive()) {
+			thread = new Thread(proceso);
+			threads.put(id, thread);
+			
 			proceso.arrancar();
-			proceso.run();
+			thread.start();
 			
 			return "OK";
 		}
@@ -54,12 +62,13 @@ public class Servicio {
 	public String parar(@DefaultValue("0") @QueryParam(value="id") int id) {
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		
-		if (proceso == null) {
+		if (proceso == null || thread == null) {
 			return "ERROR";
 		}
 		
-		if (proceso.getEstado() == Proceso.Estado.CORRIENDO) {
+		if (proceso.getEstado() == Proceso.Estado.CORRIENDO && thread.isAlive()) {
 			proceso.parar();
 			
 			return "OK";
