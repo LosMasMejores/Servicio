@@ -1,6 +1,7 @@
 package services;
 
 import java.net.URI;
+import java.util.Map;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -15,19 +16,22 @@ public class Proceso implements Runnable {
 		CORRIENDO, PARADO
 	}
 
-	public class Coordinador {
-		String ip;
-		int id;
-	}
-
-	int id;
+	int id, coordinador;
 	Estado estado;
-	Coordinador coordinador;
+	Map<Integer, String> informacion;
 	
-	public Proceso(int id) {
-		this.estado = Estado.PARADO;
-		this.coordinador = new Coordinador();
+	public Proceso(int id, Map<Integer, String> informacion) {
 		this.id = id;
+		this.coordinador = 0;
+		this.estado = Estado.PARADO;
+		this.informacion = informacion;
+	}
+	
+	public Proceso(int id, int coordinador, Map<Integer, String> informacion) {
+		this.id = id;
+		this.coordinador = coordinador;
+		this.estado = Estado.PARADO;
+		this.informacion = informacion;
 	}
 	
 	public int getId() {
@@ -103,7 +107,7 @@ public class Proceso implements Runnable {
 
 				try {
 					Thread.sleep((long) (Math.random() * 500 + 500));
-					System.out.println(id + " corriendo");
+//					System.out.println(id + " corriendo");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}

@@ -15,8 +15,12 @@ import javax.ws.rs.core.MediaType;
 @Singleton
 public class Servicio {
 	
+	final static String SERVER = "localhost:8080";
+	
 	Map<Integer, Proceso> procesos = new HashMap<>();
 	Map<Integer, Thread> threads = new HashMap<>();
+	Map<Integer, String> informacion = new HashMap<>();
+	
 	
 	@Path("/arrancar")
 	@GET
@@ -31,10 +35,12 @@ public class Servicio {
 		Thread thread = threads.get(id);
 		
 		if (proceso == null && thread == null) {
-			proceso = new Proceso(id);
-			procesos.put(id, proceso);
+			proceso = new Proceso(id, informacion);
 			thread = new Thread(proceso);
+			
+			procesos.put(id, proceso);
 			threads.put(id, thread);
+			informacion.put(id, SERVER);
 			
 			proceso.arrancar();
 			thread.start();
@@ -55,6 +61,7 @@ public class Servicio {
 		return "ERROR";
 		
 	}
+	
 	
 	@Path("/parar")
 	@GET
@@ -77,6 +84,40 @@ public class Servicio {
 		return "ERROR";
 		
 	}
+	
 
+	@Path("/actualizar")
+	@GET
+	@Produces(MediaType.TEXT_PLAIN)
+	public String actualizar(@DefaultValue("0") @QueryParam(value="id") int id, 
+			@DefaultValue("") @QueryParam(value="server") String server) {
+		
+		if (server.contains(" ")) {
+			return "ERROR";
+		}
+		
+		String[] string = server.split(":");
+				
+		if (id <= 0 || string.length != 2) {
+			return "ERROR";
+		}
+		
+		try {
+			if (Integer.parseInt(string[1]) <= 0) {
+				return "ERROR";
+			}
+		} catch(NumberFormatException e) {
+			return "ERROR";
+		}
+		
+		informacion.put(id, server);
+		
+		for (Map.Entry<Integer, String> entry : informacion.entrySet()) {
+			System.out.println("Id: " + entry.getKey() + ", Server: " + entry.getValue());
+		}
+		
+		return "OK";
+		
+	}
 }
 
