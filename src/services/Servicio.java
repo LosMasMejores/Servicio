@@ -6,16 +6,16 @@ import java.util.Map;
 import javax.inject.Singleton;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 @Path("/servicio")
 @Singleton
 public class Servicio {
 	
-	final static String SERVER = "localhost:8080";
+	final static String LOCALHOST = "localhost:8080";
 	
 	Map<Integer, Proceso> procesos = new HashMap<>();
 	Map<Integer, Thread> threads = new HashMap<>();
@@ -23,12 +23,11 @@ public class Servicio {
 	
 	
 	@Path("/arrancar")
-	@GET
-	@Produces(MediaType.TEXT_PLAIN)
-	public String arrancar(@DefaultValue("0") @QueryParam(value="id") int id) {
-		
+	@POST
+	public Response arrancar(@DefaultValue("0") @QueryParam(value="id") int id) {
+				
 		if (id <= 0) {
-			return "ERROR";
+			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
 		Proceso proceso = procesos.get(id);
@@ -40,12 +39,12 @@ public class Servicio {
 			
 			procesos.put(id, proceso);
 			threads.put(id, thread);
-			informacion.put(id, SERVER);
+			informacion.put(id, LOCALHOST);
 			
 			proceso.arrancar();
 			thread.start();
 			
-			return "OK";
+			return Response.ok().build();
 		}
 		
 		if (proceso.getEstado() == Proceso.Estado.PARADO && !thread.isAlive()) {
@@ -55,59 +54,61 @@ public class Servicio {
 			proceso.arrancar();
 			thread.start();
 			
-			return "OK";
+			return Response.ok().build();
+			
 		}
 		
-		return "ERROR";
+		return Response.status(Response.Status.BAD_REQUEST).build();
 		
 	}
 	
 	
 	@Path("/parar")
-	@GET
-	@Produces(MediaType.TEXT_PLAIN)
-	public String parar(@DefaultValue("0") @QueryParam(value="id") int id) {
+	@POST
+	public Response parar(@DefaultValue("0") @QueryParam(value="id") int id) {
 		
 		Proceso proceso = procesos.get(id);
 		Thread thread = threads.get(id);
 		
 		if (proceso == null || thread == null) {
-			return "ERROR";
+			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
 		if (proceso.getEstado() == Proceso.Estado.CORRIENDO && thread.isAlive()) {
 			proceso.parar();
-			
-			return "OK";
+			return Response.ok().build();
 		}
 		
-		return "ERROR";
+		return Response.status(Response.Status.BAD_REQUEST).build();
 		
 	}
 	
 
-	@Path("/actualizar")
-	@GET
-	@Produces(MediaType.TEXT_PLAIN)
-	public String actualizar(@DefaultValue("0") @QueryParam(value="id") int id, 
+	@Path("/informar")
+	@POST
+	public Response actualizar(@DefaultValue("0") @QueryParam(value="id") int id, 
 			@DefaultValue("") @QueryParam(value="server") String server) {
 		
 		if (server.contains(" ")) {
-			return "ERROR";
+			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
 		String[] string = server.split(":");
 				
 		if (id <= 0 || string.length != 2) {
-			return "ERROR";
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (string[0].toUpperCase().equals(LOCALHOST)) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
 		try {
 			if (Integer.parseInt(string[1]) <= 0) {
-				return "ERROR";
+				return Response.status(Response.Status.BAD_REQUEST).build();
 			}
 		} catch(NumberFormatException e) {
-			return "ERROR";
+			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
 		informacion.put(id, server);
@@ -116,7 +117,72 @@ public class Servicio {
 			System.out.println("Id: " + entry.getKey() + ", Server: " + entry.getValue());
 		}
 		
-		return "OK";
+		return Response.ok().build();
+		
+	}
+	
+	
+	@Path("/computar")
+	@GET
+	public Response computar(@DefaultValue("0") @QueryParam(value="id") int id) {
+		
+		Proceso proceso = procesos.get(id);
+		
+		if (proceso == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		return Response.ok().entity(proceso.computar()).build();
+		
+	}
+	
+	
+	@Path("/eleccion")
+	@POST
+	public Response eleccion(@DefaultValue("0") @QueryParam(value="id") int id, 
+			@DefaultValue("0") @QueryParam(value="candidato") int candidato) {
+		
+		Proceso proceso = procesos.get(id);
+		String server = informacion.get(candidato);
+		
+		if (proceso == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (server == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (proceso.ok()) {
+			return Response.ok().build();			
+		}
+		
+		return Response.status(Response.Status.BAD_REQUEST).build();
+	}
+	
+	
+	@Path("/coordinador")
+	@POST
+	public Response coordinador(@DefaultValue("0") @QueryParam(value="id") int id, 
+			@DefaultValue("0") @QueryParam(value="coordinador") int coordinador) {
+		
+		Proceso proceso = procesos.get(id);
+		String servidor = informacion.get(coordinador);
+		
+		if (proceso == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (servidor == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		synchronized (proceso) {
+			proceso.coordinador(coordinador);
+			proceso.notifyAll();
+		}
+		
+		return Response.ok().build();
 		
 	}
 }
