@@ -137,6 +137,26 @@ public class Servicio {
 	}
 	
 	
+	@Path("/ok")
+	@POST
+	public Response ok(@DefaultValue("0") @QueryParam(value="id") int id) {
+		
+		Proceso proceso = procesos.get(id);
+		
+		if (proceso == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		synchronized (proceso) {
+			proceso.ok();
+			proceso.notifyAll();
+		}
+		
+		return Response.ok().build();
+		
+	}
+	
+	
 	@Path("/eleccion")
 	@POST
 	public Response eleccion(@DefaultValue("0") @QueryParam(value="id") int id, 
@@ -153,11 +173,9 @@ public class Servicio {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
-		if (proceso.ok()) {
-			return Response.ok().build();			
-		}
+		proceso.eleccion(candidato);
 		
-		return Response.status(Response.Status.BAD_REQUEST).build();
+		return Response.ok().build();
 	}
 	
 	
