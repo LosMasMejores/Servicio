@@ -47,16 +47,6 @@ public class Servicio {
 			return Response.ok().build();
 		}
 		
-		if (thread == null) {
-			thread = new Thread(proceso);
-			threads.put(id, thread);
-			
-			proceso.arrancar();
-			thread.start();
-			
-			return Response.ok().build();
-		}
-		
 		if (!thread.isAlive()) {
 			thread = new Thread(proceso);
 			threads.put(id, thread);
@@ -79,7 +69,7 @@ public class Servicio {
 		Proceso proceso = procesos.get(id);
 		Thread thread = threads.get(id);
 		
-		if (proceso == null || thread == null) {
+		if (proceso == null) {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
@@ -136,8 +126,13 @@ public class Servicio {
 	public Response computar(@DefaultValue("0") @QueryParam(value="id") int id) {
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		
 		if (proceso == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (!thread.isAlive()) {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
@@ -160,13 +155,8 @@ public class Servicio {
 		if (!thread.isAlive()) {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
-		
-		synchronized (proceso) {
-					
-			proceso.ok();
-			proceso.notifyAll();
-
-		}
+				
+		proceso.ok();
 		
 		return Response.ok().build();
 		
@@ -221,12 +211,7 @@ public class Servicio {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
-		synchronized (proceso) {
-		
-			proceso.coordinador(coordinador);
-			proceso.notifyAll();
-			
-		}
+		proceso.coordinador(coordinador);
 		
 		return Response.ok().build();
 		
