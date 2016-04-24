@@ -37,22 +37,37 @@ public class Proceso implements Runnable {
 	}
 	
 	
-	public int getId() {
-		
-		return this.id;
-		
-	}
-	
-
-	public Estado getEstado() {
-		
-		return this.estado;
-		
-	}
+//	public int getId() {
+//		
+//		return this.id;
+//		
+//	}
+//	
+//	
+//	public int getCoordinador() {
+//		
+//		return this.coordinador;
+//		
+//	}
+//	
+//
+//	public Estado getEstado() {
+//		
+//		return this.estado;
+//		
+//	}
+//	
+//	
+//	public Eleccion getEleccion() {
+//		
+//		return this.eleccion;
+//		
+//	}
 
 	
 	public void arrancar() {
 
+		this.coordinador = 0;
 		this.estado = Estado.CORRIENDO;
 		System.out.println(this.id + " arrancado");
 
@@ -78,46 +93,49 @@ public class Proceso implements Runnable {
 				e.printStackTrace();
 			}
 			
-//			System.out.println(this.id + " computar");
-
 			return "1";
 		}
 
 	}
 	
 	
-	public void ok() {
+	public synchronized void ok() {
+		
+		System.out.println(this.id + " ok");
+
+		if (this.eleccion != Eleccion.ELECCION_ACTIVA) {
+			return;
+		}
 		
 		this.eleccion = Eleccion.ELECCION_PASIVA;
+		System.out.println(this.id + " eleccion pasiva");
+		
+		return;
 		
 	}
 
 	
-	public void eleccion() {
+	public synchronized void eleccion() {
 		
 		if (this.estado == Estado.PARADO) {
 			return;
 		}
 		
 		this.eleccion = Eleccion.ELECCION_ACTIVA;
-		System.out.println(this.id + " eleccion activa");
 				
 		while (this.eleccion == Eleccion.ELECCION_ACTIVA) {
+			
+			System.out.println(this.id + " eleccion activa");
 						
 			for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
-
-				System.out.println(this.id + " entry: " + entry.getKey());
 				
 				if (entry.getKey() <= id) {
-					System.out.println(this.id + " entry: " + entry.getKey() + " continue");
 					continue;
 				}
 								
 				new Thread(new Runnable() {
 					public void run() {
-						
-						System.out.println(id + " run: " + entry.getKey());
-						
+												
 						Client client = ClientBuilder.newClient();						
 						URI uri = UriBuilder.fromUri("http://" + entry.getValue() + "/Servicio").build();
 						WebTarget target = client.target(uri);
@@ -129,13 +147,13 @@ public class Proceso implements Runnable {
 								.request(MediaType.TEXT_PLAIN)
 								.post(null);
 						
+						System.out.println(id + " eleccion() to: " + entry.getKey());
+						
 						return;
 						
 					}
 				}).start();
-				
-				System.out.println(id + " entry: " + entry.getKey() + " start");
-				
+								
 			}
 			
 			synchronized (this) {
@@ -147,6 +165,7 @@ public class Proceso implements Runnable {
 			}
 			
 			if (this.eleccion == Eleccion.ELECCION_PASIVA) {
+				
 				synchronized (this) {
 					try {
 						this.wait(1000);
@@ -155,24 +174,19 @@ public class Proceso implements Runnable {
 					}
 					
 					if (this.eleccion == Eleccion.ACUERDO) {
-						System.out.println(id + " acuerdo");
 						return;
 					} else {
 						this.eleccion = Eleccion.ELECCION_ACTIVA;
-						System.out.println(id + " eleccion activa");
 					}
 				}
+				
 			} else {
 				
 				for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
-					
-					System.out.println(this.id + " entry: " + entry.getKey());
-					
+										
 					new Thread(new Runnable() {
 						public void run() {
-							
-							System.out.println(id + " run: " + entry.getKey());
-							
+														
 							Client client = ClientBuilder.newClient();
 							URI uri = UriBuilder.fromUri("http://" + entry.getValue() + "/Servicio").build();
 							WebTarget target = client.target(uri);
@@ -184,13 +198,13 @@ public class Proceso implements Runnable {
 								.request(MediaType.TEXT_PLAIN)
 								.post(null);
 							
+							System.out.println(id + " coordinador() to: " + entry.getKey());
+
 							return;
 							
 						}
 					}).start();
-					
-					System.out.println(id + " entry: " + entry.getKey() + " start");
-					
+										
 				}
 				
 				return;
@@ -215,17 +229,19 @@ public class Proceso implements Runnable {
 			.request(MediaType.TEXT_PLAIN)
 			.post(null);
 		
+		System.out.println(id + " eleccion() from: " + candidato);
+		
 		this.eleccion();
 		return;
 		
 	}
 	
 	
-	public void coordinador(int coordinador) {
+	public synchronized void coordinador(int coordinador) {
 		
 		this.coordinador = coordinador;
 		
-		System.out.println(this.id + " coordinador: " + coordinador);
+		System.out.println(id + " coordinador() from: " + coordinador);
 		
 		this.eleccion = Eleccion.ACUERDO;
 		

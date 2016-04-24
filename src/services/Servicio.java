@@ -33,7 +33,7 @@ public class Servicio {
 		Proceso proceso = procesos.get(id);
 		Thread thread = threads.get(id);
 		
-		if (proceso == null && thread == null) {
+		if (proceso == null) {
 			proceso = new Proceso(id, informacion);
 			thread = new Thread(proceso);
 			
@@ -47,7 +47,7 @@ public class Servicio {
 			return Response.ok().build();
 		}
 		
-		if (proceso.getEstado() == Proceso.Estado.PARADO && !thread.isAlive()) {
+		if (thread == null) {
 			thread = new Thread(proceso);
 			threads.put(id, thread);
 			
@@ -55,7 +55,16 @@ public class Servicio {
 			thread.start();
 			
 			return Response.ok().build();
+		}
+		
+		if (!thread.isAlive()) {
+			thread = new Thread(proceso);
+			threads.put(id, thread);
 			
+			proceso.arrancar();
+			thread.start();
+			
+			return Response.ok().build();
 		}
 		
 		return Response.status(Response.Status.BAD_REQUEST).build();
@@ -74,7 +83,7 @@ public class Servicio {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
-		if (proceso.getEstado() == Proceso.Estado.CORRIENDO && thread.isAlive()) {
+		if (thread.isAlive()) {
 			proceso.parar();
 			return Response.ok().build();
 		}
@@ -142,14 +151,21 @@ public class Servicio {
 	public Response ok(@DefaultValue("0") @QueryParam(value="id") int id) {
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		
 		if (proceso == null) {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
+		if (!thread.isAlive()) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
 		synchronized (proceso) {
+					
 			proceso.ok();
 			proceso.notifyAll();
+
 		}
 		
 		return Response.ok().build();
@@ -163,6 +179,7 @@ public class Servicio {
 			@DefaultValue("0") @QueryParam(value="candidato") int candidato) {
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		String server = informacion.get(candidato);
 		
 		if (proceso == null) {
@@ -170,6 +187,10 @@ public class Servicio {
 		}
 		
 		if (server == null) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
+		if (!thread.isAlive()) {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
@@ -185,6 +206,7 @@ public class Servicio {
 			@DefaultValue("0") @QueryParam(value="coordinador") int coordinador) {
 		
 		Proceso proceso = procesos.get(id);
+		Thread thread = threads.get(id);
 		String servidor = informacion.get(coordinador);
 		
 		if (proceso == null) {
@@ -195,9 +217,15 @@ public class Servicio {
 			return Response.status(Response.Status.BAD_REQUEST).build();
 		}
 		
+		if (!thread.isAlive()) {
+			return Response.status(Response.Status.BAD_REQUEST).build();
+		}
+		
 		synchronized (proceso) {
+		
 			proceso.coordinador(coordinador);
 			proceso.notifyAll();
+			
 		}
 		
 		return Response.ok().build();
