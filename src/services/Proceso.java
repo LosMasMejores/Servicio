@@ -106,15 +106,10 @@ public class Proceso implements Runnable {
 		if (this.eleccion != Eleccion.ELECCION_ACTIVA) {
 			return;
 		}
-		
-		synchronized (this) {
-					
-			this.eleccion = Eleccion.ELECCION_PASIVA;
-			System.out.println(this.id + " eleccion pasiva");
-
-			this.notify();
-			
-		}
+				
+		this.eleccion = Eleccion.ELECCION_PASIVA;
+		System.out.println(this.id + " eleccion pasiva");
+		this.notify();
 		
 		return;
 		
@@ -132,11 +127,15 @@ public class Proceso implements Runnable {
 		while (this.eleccion == Eleccion.ELECCION_ACTIVA) {
 			
 			System.out.println(this.id + " eleccion activa");
+			
+			boolean atLeastOne = false;			
 						
 			for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
 				
 				if (entry.getKey() <= id) {
 					continue;
+				} else {
+					atLeastOne = true;
 				}
 								
 				new Thread(new Runnable() {
@@ -162,30 +161,30 @@ public class Proceso implements Runnable {
 								
 			}
 			
-			synchronized (this) {
+			if (atLeastOne) {
+				
 				try {
 					System.out.println(id + " wait for ok");
 					this.wait(1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
+				
 			}
 			
 			if (this.eleccion == Eleccion.ELECCION_PASIVA) {
 				
-				synchronized (this) {
-					try {
-						System.out.println(id + " wait for coordinador");
-						this.wait(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					
-					if (this.eleccion == Eleccion.ACUERDO) {
-						return;
-					} else {
-						this.eleccion = Eleccion.ELECCION_ACTIVA;
-					}
+				try {
+					System.out.println(id + " wait for coordinador");
+					this.wait(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				if (this.eleccion == Eleccion.ACUERDO) {
+					return;
+				} else {
+					this.eleccion = Eleccion.ELECCION_ACTIVA;
 				}
 				
 			} else {
@@ -240,6 +239,7 @@ public class Proceso implements Runnable {
 		System.out.println(id + " eleccion() from: " + candidato);
 		
 		this.eleccion();
+		
 		return;
 		
 	}
@@ -247,15 +247,11 @@ public class Proceso implements Runnable {
 	
 	public synchronized void coordinador(int coordinador) {
 		
-		synchronized (this) {
-		
-			this.coordinador = coordinador;
-			System.out.println(id + " coordinador() from: " + coordinador);
-			this.eleccion = Eleccion.ACUERDO;
-			System.out.println(this.id + " acuerdo");
-			this.notify();
-			
-		}
+		this.coordinador = coordinador;
+		System.out.println(id + " coordinador() from: " + coordinador);
+		this.eleccion = Eleccion.ACUERDO;
+		System.out.println(this.id + " acuerdo");
+		this.notify();
 		
 		return;
 		
