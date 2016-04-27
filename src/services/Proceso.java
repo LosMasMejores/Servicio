@@ -35,8 +35,8 @@ public class Proceso implements Runnable {
 		this.coordinador = 0;
 		this.estado = Estado.PARADO;
 		this.eleccion = Eleccion.ACUERDO;
-		this.sem_ok = new Semaphore(1);
-		this.sem_coord = new Semaphore(1);
+		this.sem_ok = new Semaphore(1, true);
+		this.sem_coord = new Semaphore(1, true);
 		this.informacion = informacion;
 		
 	}
