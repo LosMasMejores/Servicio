@@ -2,6 +2,8 @@ package services;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -23,6 +25,7 @@ public class Proceso implements Runnable {
 	int id, coordinador;
 	Estado estado;
 	Eleccion eleccion;
+	Semaphore sem_ok, sem_coord;
 	Map<Integer, String> informacion;
 	
 	
@@ -32,6 +35,8 @@ public class Proceso implements Runnable {
 		this.coordinador = 0;
 		this.estado = Estado.PARADO;
 		this.eleccion = Eleccion.ACUERDO;
+		this.sem_ok = new Semaphore(1);
+		this.sem_coord = new Semaphore(1);
 		this.informacion = informacion;
 		
 	}
@@ -99,43 +104,37 @@ public class Proceso implements Runnable {
 	}
 	
 	
-	public synchronized void ok() {
+	public void ok() {
 		
+		this.sem_ok.release();
 		System.out.println(this.id + " ok");
-
-		if (this.eleccion != Eleccion.ELECCION_ACTIVA) {
-			return;
-		}
 				
-		this.eleccion = Eleccion.ELECCION_PASIVA;
-		System.out.println(this.id + " eleccion pasiva");
-		this.notify();
-		
 		return;
 		
 	}
 
 	
-	public synchronized void eleccion() {
+	public void eleccion() {
 		
-		if (this.estado == Estado.PARADO) {
-			return;
-		}
+		boolean has_message = false,
+				at_least_one;
 		
-		this.eleccion = Eleccion.ELECCION_ACTIVA;
-				
-		while (this.eleccion == Eleccion.ELECCION_ACTIVA) {
+		while (true) {
 			
+			this.eleccion = Eleccion.ELECCION_ACTIVA;
 			System.out.println(this.id + " eleccion activa");
 			
-			boolean atLeastOne = false;			
-						
+			this.sem_ok.drainPermits();
+			this.sem_coord.drainPermits();
+			
+			at_least_one = false;
+									
 			for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
 				
 				if (entry.getKey() <= id) {
 					continue;
 				} else {
-					atLeastOne = true;
+					at_least_one = true;
 				}
 								
 				new Thread(new Runnable() {
@@ -160,31 +159,38 @@ public class Proceso implements Runnable {
 				}).start();
 								
 			}
-			
-			if (atLeastOne) {
 				
+			if (at_least_one) {
+			
 				try {
-					System.out.println(id + " wait for ok");
-					this.wait(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+					has_message = this.sem_ok.tryAcquire(1000, TimeUnit.MILLISECONDS);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
 				}
 				
+			} else {
+				has_message = false;
 			}
 			
+			this.eleccion = has_message ? Eleccion.ELECCION_PASIVA : this.eleccion;
+							
 			if (this.eleccion == Eleccion.ELECCION_PASIVA) {
 				
+				System.out.println(this.id + " eleccion pasiva");
+				
 				try {
-					System.out.println(id + " wait for coordinador");
-					this.wait(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+					has_message = this.sem_coord.tryAcquire(1000, TimeUnit.MILLISECONDS);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
 				}
 				
+				this.eleccion = has_message ? Eleccion.ACUERDO : Eleccion.ELECCION_ACTIVA;
+				
 				if (this.eleccion == Eleccion.ACUERDO) {
+					System.out.println(this.id + " acuerdo");
 					return;
 				} else {
-					this.eleccion = Eleccion.ELECCION_ACTIVA;
+					continue;
 				}
 				
 			} else {
@@ -218,8 +224,6 @@ public class Proceso implements Runnable {
 				
 			}
 		}
-
-		return;
 		
 	}
 	
@@ -245,13 +249,11 @@ public class Proceso implements Runnable {
 	}
 	
 	
-	public synchronized void coordinador(int coordinador) {
+	public void coordinador(int coordinador) {
 		
 		this.coordinador = coordinador;
+		this.sem_coord.release();
 		System.out.println(id + " coordinador() from: " + coordinador);
-		this.eleccion = Eleccion.ACUERDO;
-		System.out.println(this.id + " acuerdo");
-		this.notify();
 		
 		return;
 		
