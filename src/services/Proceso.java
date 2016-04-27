@@ -171,11 +171,10 @@ public class Proceso implements Runnable {
 			} else {
 				has_message = false;
 			}
-			
-			this.eleccion = has_message ? Eleccion.ELECCION_PASIVA : this.eleccion;
-							
-			if (this.eleccion == Eleccion.ELECCION_PASIVA) {
+										
+			if (has_message) {
 				
+				this.eleccion = Eleccion.ELECCION_PASIVA;
 				System.out.println(this.id + " eleccion pasiva");
 				
 				try {
@@ -183,11 +182,11 @@ public class Proceso implements Runnable {
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
-				
-				this.eleccion = has_message ? Eleccion.ACUERDO : Eleccion.ELECCION_ACTIVA;
-				
-				if (this.eleccion == Eleccion.ACUERDO) {
+								
+				if (has_message) {
+					this.eleccion = Eleccion.ACUERDO;
 					System.out.println(this.id + " acuerdo");
+					
 					return;
 				} else {
 					continue;
@@ -217,7 +216,11 @@ public class Proceso implements Runnable {
 							
 						}
 					}).start();
-										
+					
+					
+					this.eleccion = Eleccion.ACUERDO;
+					System.out.println(this.id + " acuerdo");
+					
 				}
 				
 				return;
