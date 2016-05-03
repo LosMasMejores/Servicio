@@ -40,56 +40,28 @@ public class Proceso implements Runnable {
 		this.informacion = informacion;
 		
 	}
-	
-	
-//	public int getId() {
-//		
-//		return this.id;
-//		
-//	}
-//	
-//	
-//	public int getCoordinador() {
-//		
-//		return this.coordinador;
-//		
-//	}
-//	
-//
-//	public Estado getEstado() {
-//		
-//		return this.estado;
-//		
-//	}
-//	
-//	
-//	public Eleccion getEleccion() {
-//		
-//		return this.eleccion;
-//		
-//	}
 
 	
 	public void arrancar() {
 
-		this.coordinador = 0;
-		this.estado = Estado.CORRIENDO;
-		System.out.println(this.id + " arrancado");
+		coordinador = 0;
+		estado = Estado.CORRIENDO;
+		System.out.println(id + " arrancado");
 
 	}
 
 	
 	public void parar() {
 
-		this.estado = Estado.PARADO;
-		System.out.println(this.id + " parado");
+		estado = Estado.PARADO;
+		System.out.println(id + " parado");
 
 	}
 
 	
 	public String computar() {
 		
-		if (this.estado == Estado.PARADO) {
+		if (estado == Estado.PARADO) {
 			return "-1";
 		} else {
 			try {
@@ -106,8 +78,8 @@ public class Proceso implements Runnable {
 	
 	public void ok() {
 		
-		this.sem_ok.release();
-		System.out.println(this.id + " ok");
+		sem_ok.release();
+		System.out.println(id + " ok");
 				
 		return;
 		
@@ -121,15 +93,15 @@ public class Proceso implements Runnable {
 		
 		while (true) {
 			
-			this.eleccion = Eleccion.ELECCION_ACTIVA;
-			System.out.println(this.id + " eleccion activa");
+			eleccion = Eleccion.ELECCION_ACTIVA;
+			System.out.println(id + " eleccion activa");
 			
-			this.sem_ok.drainPermits();
-			this.sem_coord.drainPermits();
+			sem_ok.drainPermits();
+			sem_coord.drainPermits();
 			
 			at_least_one = false;
 									
-			for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
+			for (Map.Entry<Integer, String> entry : informacion.entrySet()) {
 				
 				if (entry.getKey() <= id) {
 					continue;
@@ -163,7 +135,7 @@ public class Proceso implements Runnable {
 			if (at_least_one) {
 			
 				try {
-					has_message = this.sem_ok.tryAcquire(1000, TimeUnit.MILLISECONDS);
+					has_message = sem_ok.tryAcquire(1000, TimeUnit.MILLISECONDS);
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
@@ -174,18 +146,18 @@ public class Proceso implements Runnable {
 										
 			if (has_message) {
 				
-				this.eleccion = Eleccion.ELECCION_PASIVA;
-				System.out.println(this.id + " eleccion pasiva");
+				eleccion = Eleccion.ELECCION_PASIVA;
+				System.out.println(id + " eleccion pasiva");
 				
 				try {
-					has_message = this.sem_coord.tryAcquire(1000, TimeUnit.MILLISECONDS);
+					has_message = sem_coord.tryAcquire(1000, TimeUnit.MILLISECONDS);
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
 								
 				if (has_message) {
-					this.eleccion = Eleccion.ACUERDO;
-					System.out.println(this.id + " acuerdo");
+					eleccion = Eleccion.ACUERDO;
+					System.out.println(id + " acuerdo");
 					
 					return;
 				} else {
@@ -194,7 +166,7 @@ public class Proceso implements Runnable {
 				
 			} else {
 				
-				for (Map.Entry<Integer, String> entry : this.informacion.entrySet()) {
+				for (Map.Entry<Integer, String> entry : informacion.entrySet()) {
 										
 					new Thread(new Runnable() {
 						public void run() {
@@ -218,8 +190,8 @@ public class Proceso implements Runnable {
 					}).start();
 					
 					
-					this.eleccion = Eleccion.ACUERDO;
-					System.out.println(this.id + " acuerdo");
+					eleccion = Eleccion.ACUERDO;
+					System.out.println(id + " acuerdo");
 					
 				}
 				
@@ -245,7 +217,7 @@ public class Proceso implements Runnable {
 		
 		System.out.println(id + " eleccion() from: " + candidato);
 		
-		this.eleccion();
+		eleccion();
 		
 		return;
 		
@@ -255,8 +227,8 @@ public class Proceso implements Runnable {
 	public void coordinador(int coordinador) {
 		
 		this.coordinador = coordinador;
-		this.sem_coord.release();
-		System.out.println(id + " coordinador() from: " + coordinador);
+		sem_coord.release();
+		System.out.println(id + " coordinador() from: " + this.coordinador);
 		
 		return;
 		
@@ -267,7 +239,7 @@ public class Proceso implements Runnable {
 
 		while (true) {
 			
-			if (this.estado == Estado.PARADO) {
+			if (estado == Estado.PARADO) {
 				return;
 			}
 			
@@ -280,7 +252,7 @@ public class Proceso implements Runnable {
 			String string = informacion.get(coordinador);
 			
 			if (string == null) {
-				System.out.println(this.id + " run error 1");
+				System.out.println(id + " run error 1");
 				eleccion();
 				continue;
 			}
@@ -299,13 +271,13 @@ public class Proceso implements Runnable {
 			String resultado = response.readEntity(String.class);
 			
 			if (resultado == null || response.getStatus() != 200) {
-				System.out.println(this.id + " run error 2");
+				System.out.println(id + " run error 2");
 				eleccion();
 				continue;
 			}
 			
 			if (resultado.contains("-1")) {
-				System.out.println(this.id + " run error 3");
+				System.out.println(id + " run error 3");
 				eleccion();
 			}
 			
